@@ -28,15 +28,12 @@ def test_project_task_operations():
     project.add_task(task)
     assert project.get_task("Unique Task").title == "Unique Task"
     
-    # Check case-insensitivity on tracking operations
     assert project.get_task("unique task").title == "Unique Task"
     
-    # Block matching titles
     duplicate_task = Task(title="UNIQUE TASK")
     with pytest.raises(DuplicateTaskError):
         project.add_task(duplicate_task)
 
-    # Removal tests
     project.remove_task("unique task")
     assert len(project.list_tasks()) == 0
     

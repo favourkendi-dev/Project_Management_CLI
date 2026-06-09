@@ -41,18 +41,15 @@ def test_3_nested_reconstruction(tmp_path: Path):
     db_file = tmp_path / "database.json"
     storage = Storage(db_file)
     
-    # Correct instantiation matching your model definitions
     task = Task(title="Build CLI", completed=False, contributors=["Emmanuel"])
     project = Project(title="Python Tool", tasks=[task])
     user = User(name="Emmanuel", projects=[project])
     
     storage.save_users([user])
     
-    # Reload and verify strict object typings
     loaded_users = storage.load_users()
     loaded_user = loaded_users[0]
     
-    # Verify everything is recovered as custom domain model instances
     assert isinstance(loaded_user, User)
     
     loaded_project = loaded_user.projects[0]
@@ -61,7 +58,6 @@ def test_3_nested_reconstruction(tmp_path: Path):
     loaded_task = loaded_project.tasks[0]
     assert isinstance(loaded_task, Task)
     
-    # Cross check properties to be 100% sure data mapped right
     assert loaded_task.title == "Build CLI"
     assert "Emmanuel" in loaded_task.contributors
 
