@@ -1,0 +1,21 @@
+{
+    "users": [
+        {
+            "name": "Kendi",
+            "projects": [
+                {
+                    "title": "CLI Project",
+                    "tasks": [
+                        {
+                            "title": "Implement Frontend",
+                            "completed": false,
+                            "contributors": [
+                                "Emmanuel"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
