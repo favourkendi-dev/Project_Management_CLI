@@ -90,7 +90,6 @@ def test_complete_task(manager: Manager):
     manager.complete_task("Emmanuel", "CLI Tool", "Write Tests")
     tasks = manager.list_tasks("Emmanuel", "CLI Tool")
     
-    # Locate task inside returned tasks copy
     target_task = next(t for t in tasks if t.title == "Write Tests")
     assert target_task.completed is True
     
@@ -104,7 +103,6 @@ def test_remove_task(manager: Manager):
     project = manager.add_project("Emmanuel", "CLI Tool")
     manager.add_task("Emmanuel", "CLI Tool", "Write Tests")
     
-    # Directly invoke removal on the retrieved project object model proxy
     project.remove_task("Write Tests")
     assert len(project.list_tasks()) == 0
 
@@ -137,14 +135,12 @@ def test_persistence_roundtrip(db_setup):
     """Verify disk synchronization across multiple separate manager sessions."""
     db_file, storage = db_setup
     
-    # Session 1: Write deep hierarchy state to file system database
     manager_1 = Manager(storage)
     manager_1.add_user("Emmanuel")
     manager_1.add_project("Emmanuel", "CLI Tool")
     manager_1.add_task("Emmanuel", "CLI Tool", "Write Tests")
     manager_1.add_task_contributor("Emmanuel", "CLI Tool", "Write Tests", "Annette")
     
-    # Session 2: Instantiate completely fresh to confirm disk file hydration logic works
     fresh_storage = Storage(db_file)
     manager_2 = Manager(fresh_storage)
     

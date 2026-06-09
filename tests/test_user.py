@@ -15,13 +15,11 @@ def test_user_creation_and_serialization():
     user = User(name="Emmanuel", projects=[project])
     
     assert user.name == "Emmanuel"
-    
-    # Test dictionary export structure
+ 
     serialized = user.to_dict()
     assert serialized["name"] == "Emmanuel"
     assert serialized["projects"][0]["title"] == "SubProject"
     
-    # Test dictionary reconstruction structure
     reconstructed_user = User.from_dict(serialized)
     assert reconstructed_user.name == "Emmanuel"
     assert reconstructed_user.get_project("SubProject").title == "SubProject"
