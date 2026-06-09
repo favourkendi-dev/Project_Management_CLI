@@ -29,8 +29,9 @@ def manager(db_setup) -> Manager:
 
 def test_add_user(manager: Manager):
     """Verify adding users works and prevents duplicates."""
-    user = manager.add_user("Emmanuel")
+    user = manager.add_user("Emmanuel", "emmanuel@example.com")
     assert user.name == "Emmanuel"
+    assert user.email == "emmanuel@example.com"
     assert len(manager.list_users()) == 1
     
     with pytest.raises(DuplicateUserError):
@@ -56,6 +57,19 @@ def test_add_project(manager: Manager):
     
     with pytest.raises(DuplicateProjectError):
         manager.add_project("Emmanuel", "cli tool")
+
+
+def test_search_projects(manager: Manager):
+    """Verify project search returns matching titles for a user."""
+    manager.add_user("Emmanuel")
+    manager.add_project("Emmanuel", "CLI Tool")
+    manager.add_project("Emmanuel", "Core Engine")
+    results = manager.search_projects("Emmanuel", "cli")
+    assert len(results) == 1
+    assert results[0].title == "CLI Tool"
+
+    no_results = manager.search_projects("Emmanuel", "missing")
+    assert no_results == []
 
 
 def test_remove_project(manager: Manager):

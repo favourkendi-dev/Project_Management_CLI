@@ -12,9 +12,10 @@ def test_user_creation_and_serialization():
     """Test full dictionary roundtrip mapping logic for deep User structures."""
     task = Task(title="SubTask", completed=True, contributors=["Emmanuel"])
     project = Project(title="SubProject", tasks=[task])
-    user = User(name="Emmanuel", projects=[project])
+    user = User(name="Emmanuel", email="emmanuel@example.com", projects=[project])
     
     assert user.name == "Emmanuel"
+    assert user.email == "emmanuel@example.com"
     
     # Test dictionary export structure
     serialized = user.to_dict()

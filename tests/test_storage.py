@@ -25,7 +25,7 @@ def test_2_add_save_and_reload_user(tmp_path: Path):
     db_file = tmp_path / "database.json"
     storage = Storage(db_file)
     
-    original_user = User(name="Emmanuel")
+    original_user = User(name="Emmanuel", email="emmanuel@example.com")
     storage.save_users([original_user])
     
     reloaded_storage = Storage(db_file)
@@ -33,6 +33,7 @@ def test_2_add_save_and_reload_user(tmp_path: Path):
     
     assert len(loaded_users) == 1
     assert loaded_users[0].name == original_user.name
+    assert loaded_users[0].email == original_user.email
 
 
 def test_3_nested_reconstruction(tmp_path: Path):

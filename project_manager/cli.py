@@ -20,6 +20,7 @@ from project_manager.services.manager import (
     UserNotFoundError,
 )
 from project_manager.services.storage import Storage
+from project_manager.models.user import InvalidEmailError
 
 
 class CLI:
@@ -48,6 +49,9 @@ class CLI:
         try:
             parsed_args.func(parsed_args)
             return 0
+        except InvalidEmailError as exc:
+            self._console.print(f"[red]Email validation error:[/red] {exc}. Provide an address like 'name@example.com'.")
+            return 1
         except (
             DuplicateUserError,
             UserNotFoundError,
@@ -76,6 +80,7 @@ class CLI:
         self._build_project_commands(subparsers)
         self._build_task_commands(subparsers)
         self._build_contributor_commands(subparsers)
+        self._build_data_commands(subparsers)
 
         return parser
 
@@ -86,6 +91,10 @@ class CLI:
             "--name",
             required=True,
             help="Name of the user to create",
+        )
+        user_parser.add_argument(
+            "--email",
+            help="Optional email address for the user",
         )
         user_parser.set_defaults(func=self._handle_add_user)
 
@@ -100,6 +109,19 @@ class CLI:
         )
         remove_user_parser.set_defaults(func=self._handle_remove_user)
 
+        update_user_parser = subparsers.add_parser("update-user", help="Rename an existing user")
+        update_user_parser.add_argument(
+            "--name",
+            required=True,
+            help="Current name of the user",
+        )
+        update_user_parser.add_argument(
+            "--new-name",
+            required=True,
+            help="New name for the user",
+        )
+        update_user_parser.set_defaults(func=self._handle_update_user)
+
     def _build_project_commands(self, subparsers: argparse._SubParsersAction) -> None:
         """Add project-related subcommands."""
         add_project_parser = subparsers.add_parser("add-project", help="Add a new project")
@@ -113,7 +135,60 @@ class CLI:
             required=True,
             help="Title of the project",
         )
+        add_project_parser.add_argument(
+            "--description",
+            help="Optional description for the project",
+        )
+        add_project_parser.add_argument(
+            "--due-date",
+            help="Optional due date in YYYY-MM-DD format",
+        )
+        add_project_parser.add_argument(
+            "--status",
+            choices=["planned", "active", "completed"],
+            default="planned",
+            help="Project status",
+        )
         add_project_parser.set_defaults(func=self._handle_add_project)
+
+        update_project_parser = subparsers.add_parser("update-project", help="Update project metadata")
+        update_project_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        update_project_parser.add_argument(
+            "--title",
+            required=True,
+            help="Current title of the project",
+        )
+        update_project_parser.add_argument(
+            "--new-title",
+            help="New title for the project",
+        )
+        update_project_parser.add_argument(
+            "--description",
+            help="New description for the project",
+        )
+        update_project_parser.add_argument(
+            "--status",
+            choices=["planned", "active", "completed"],
+            help="New project status",
+        )
+        update_project_parser.set_defaults(func=self._handle_update_project)
+
+        show_project_parser = subparsers.add_parser("show-project", help="Show detailed project information")
+        show_project_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        show_project_parser.add_argument(
+            "--title",
+            required=True,
+            help="Title of the project",
+        )
+        show_project_parser.set_defaults(func=self._handle_show_project)
 
         list_projects_parser = subparsers.add_parser(
             "list-projects", help="List all projects for a user"
@@ -124,6 +199,34 @@ class CLI:
             help="Name of the user",
         )
         list_projects_parser.set_defaults(func=self._handle_list_projects)
+
+        search_projects_parser = subparsers.add_parser(
+            "search-projects", help="Search projects for a user"
+        )
+        search_projects_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user",
+        )
+        search_projects_parser.add_argument(
+            "--query",
+            required=True,
+            help="Keyword or text to search in project titles or descriptions",
+        )
+        search_projects_parser.set_defaults(func=self._handle_search_projects)
+
+        project_summary_parser = subparsers.add_parser("project-summary", help="Show summary for a project")
+        project_summary_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        project_summary_parser.add_argument(
+            "--title",
+            required=True,
+            help="Title of the project",
+        )
+        project_summary_parser.set_defaults(func=self._handle_project_summary)
 
         remove_project_parser = subparsers.add_parser("remove-project", help="Remove a project")
         remove_project_parser.add_argument(
@@ -156,7 +259,100 @@ class CLI:
             required=True,
             help="Title of the task",
         )
+        add_task_parser.add_argument(
+            "--description",
+            help="Optional task description",
+        )
+        add_task_parser.add_argument(
+            "--due-date",
+            help="Optional due date in YYYY-MM-DD format",
+        )
+        add_task_parser.add_argument(
+            "--priority",
+            choices=["low", "normal", "high"],
+            default="normal",
+            help="Task priority",
+        )
+        add_task_parser.add_argument(
+            "--assigned-to",
+            help="Optional single assignee for the task",
+        )
         add_task_parser.set_defaults(func=self._handle_add_task)
+
+        update_task_parser = subparsers.add_parser("update-task", help="Update task metadata")
+        update_task_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        update_task_parser.add_argument(
+            "--project",
+            required=True,
+            help="Title of the project",
+        )
+        update_task_parser.add_argument(
+            "--task",
+            required=True,
+            help="Current title of the task",
+        )
+        update_task_parser.add_argument(
+            "--new-title",
+            help="New title for the task",
+        )
+        update_task_parser.add_argument(
+            "--description",
+            help="New description for the task",
+        )
+        update_task_parser.add_argument(
+            "--due-date",
+            help="New due date in YYYY-MM-DD format",
+        )
+        update_task_parser.add_argument(
+            "--priority",
+            choices=["low", "normal", "high"],
+            help="New task priority",
+        )
+        update_task_parser.add_argument(
+            "--assigned-to",
+            help="New assignee for the task",
+        )
+        update_task_parser.set_defaults(func=self._handle_update_task)
+
+        show_task_parser = subparsers.add_parser("show-task", help="Show detailed task information")
+        show_task_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        show_task_parser.add_argument(
+            "--project",
+            required=True,
+            help="Title of the project",
+        )
+        show_task_parser.add_argument(
+            "--task",
+            required=True,
+            help="Title of the task",
+        )
+        show_task_parser.set_defaults(func=self._handle_show_task)
+
+        search_tasks_parser = subparsers.add_parser("search-tasks", help="Search tasks inside a project")
+        search_tasks_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user who owns the project",
+        )
+        search_tasks_parser.add_argument(
+            "--project",
+            required=True,
+            help="Title of the project",
+        )
+        search_tasks_parser.add_argument(
+            "--query",
+            required=True,
+            help="Keyword or text to search in task titles or descriptions",
+        )
+        search_tasks_parser.set_defaults(func=self._handle_search_tasks)
 
         list_tasks_parser = subparsers.add_parser("list-tasks", help="List all tasks in a project")
         list_tasks_parser.add_argument(
@@ -168,6 +364,15 @@ class CLI:
             "--project",
             required=True,
             help="Title of the project",
+        )
+        list_tasks_parser.add_argument(
+            "--status",
+            choices=["pending", "completed"],
+            help="Filter tasks by status",
+        )
+        list_tasks_parser.add_argument(
+            "--assigned-to",
+            help="Filter tasks by assignee",
         )
         list_tasks_parser.set_defaults(func=self._handle_list_tasks)
 
@@ -257,8 +462,34 @@ class CLI:
         )
         remove_contributor_parser.set_defaults(func=self._handle_remove_contributor)
 
+    def _build_data_commands(self, subparsers: argparse._SubParsersAction) -> None:
+        """Add data persistence-related subcommands."""
+        export_parser = subparsers.add_parser("export-data", help="Export the current data file")
+        export_parser.add_argument(
+            "--output",
+            required=True,
+            help="Path to export JSON data to",
+        )
+        export_parser.set_defaults(func=self._handle_export_data)
+
+        import_parser = subparsers.add_parser("import-data", help="Import data from a JSON file")
+        import_parser.add_argument(
+            "--input",
+            required=True,
+            help="Path to JSON file containing data to import",
+        )
+        import_parser.set_defaults(func=self._handle_import_data)
+
+        summary_parser = subparsers.add_parser("user-summary", help="Show summary for a user")
+        summary_parser.add_argument(
+            "--user",
+            required=True,
+            help="Name of the user",
+        )
+        summary_parser.set_defaults(func=self._handle_user_summary)
+
     def _handle_add_user(self, args: argparse.Namespace) -> None:
-        user = self._manager.add_user(args.name)
+        user = self._manager.add_user(args.name, args.email)
         self._console.print(f"User '{user.name}' added successfully.")
 
     def _handle_list_users(self, args: argparse.Namespace) -> None:
@@ -268,8 +499,9 @@ class CLI:
             return
         table = Table(title="System Users")
         table.add_column("User Name", style="cyan", no_wrap=True)
+        table.add_column("Email", style="green")
         for user in users:
-            table.add_row(user.name)
+            table.add_row(user.name, user.email or "None")
         self._console.print(table)
 
     def _handle_remove_user(self, args: argparse.Namespace) -> None:
@@ -277,8 +509,36 @@ class CLI:
         self._console.print(f"User '{args.name}' removed successfully.")
 
     def _handle_add_project(self, args: argparse.Namespace) -> None:
-        project = self._manager.add_project(args.user, args.title)
+        project = self._manager.add_project(
+            args.user,
+            args.title,
+            description=args.description,
+            status=args.status,
+            due_date=args.due_date,
+        )
         self._console.print(f"Project '{project.title}' created for user '{args.user}'.")
+
+    def _handle_update_project(self, args: argparse.Namespace) -> None:
+        project = self._manager.update_project(
+            args.user,
+            args.title,
+            new_title=args.new_title,
+            description=args.description,
+            status=args.status,
+        )
+        self._console.print(f"Project '{project.title}' updated for user '{args.user}'.")
+
+    def _handle_show_project(self, args: argparse.Namespace) -> None:
+        project = self._manager.show_project(args.user, args.title)
+        table = Table(title=f"Project Details: {project.title}")
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="white")
+        table.add_row("Title", project.title)
+        table.add_row("Description", project.description or "None")
+        table.add_row("Status", project.status.title())
+        table.add_row("Due Date", project.due_date or "None")
+        table.add_row("Total Tasks", str(len(project.tasks)))
+        self._console.print(table)
 
     def _handle_list_projects(self, args: argparse.Namespace) -> None:
         projects = self._manager.list_projects(args.user)
@@ -287,32 +547,104 @@ class CLI:
             return
         table = Table(title=f"Projects for {args.user}")
         table.add_column("Project Title", style="magenta")
-        table.add_column("Total Tasks", style="green")
+        table.add_column("Status", style="green")
+        table.add_column("Total Tasks", style="cyan")
         for project in projects:
-            table.add_row(project.title, str(len(project.tasks)))
+            table.add_row(project.title, project.status.title(), str(len(project.tasks)))
         self._console.print(table)
 
     def _handle_remove_project(self, args: argparse.Namespace) -> None:
         self._manager.remove_project(args.user, args.title)
         self._console.print(f"Project '{args.title}' removed from user '{args.user}'.")
 
+    def _handle_search_projects(self, args: argparse.Namespace) -> None:
+        projects = self._manager.search_projects(args.user, args.query)
+        if not projects:
+            self._console.print(
+                f"[yellow]No projects found matching '{args.query}' for user '{args.user}'.[/yellow]"
+            )
+            return
+        table = Table(title=f"Search results for {args.user}")
+        table.add_column("Project Title", style="magenta")
+        table.add_column("Status", style="green")
+        table.add_column("Total Tasks", style="cyan")
+        for project in projects:
+            table.add_row(project.title, project.status.title(), str(len(project.tasks)))
+        self._console.print(table)
+
     def _handle_add_task(self, args: argparse.Namespace) -> None:
-        task = self._manager.add_task(args.user, args.project, args.title)
+        task = self._manager.add_task(
+            args.user,
+            args.project,
+            args.title,
+            description=args.description,
+            due_date=args.due_date,
+            priority=args.priority,
+            assigned_to=args.assigned_to,
+        )
         self._console.print(f"Task '{task.title}' added to project '{args.project}'.")
 
+    def _handle_update_task(self, args: argparse.Namespace) -> None:
+        task = self._manager.update_task(
+            args.user,
+            args.project,
+            args.task,
+            new_title=args.new_title,
+            description=args.description,
+            due_date=args.due_date,
+            priority=args.priority,
+            assigned_to=args.assigned_to,
+        )
+        self._console.print(f"Task '{task.title}' updated in project '{args.project}'.")
+
+    def _handle_show_task(self, args: argparse.Namespace) -> None:
+        task = self._manager.show_task(args.user, args.project, args.task)
+        table = Table(title=f"Task Details: {task.title}")
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="white")
+        table.add_row("Title", task.title)
+        table.add_row("Description", task.description or "None")
+        table.add_row("Due Date", task.due_date or "None")
+        table.add_row("Priority", task.priority.title())
+        table.add_row("Assigned To", task.assigned_to or "None")
+        table.add_row("Status", "Done" if task.completed else "Pending")
+        table.add_row("Contributors", ", ".join(task.contributors) if task.contributors else "None")
+        self._console.print(table)
+
+    def _handle_search_tasks(self, args: argparse.Namespace) -> None:
+        tasks = self._manager.search_tasks(args.user, args.project, args.query)
+        if not tasks:
+            self._console.print(
+                f"[yellow]No tasks found matching '{args.query}' in project '{args.project}'.[/yellow]"
+            )
+            return
+        table = Table(title=f"Task Search Results for {args.project}")
+        table.add_column("Task Title", style="blue")
+        table.add_column("Status", style="green")
+        table.add_column("Assigned", style="cyan")
+        for task in tasks:
+            table.add_row(
+                task.title,
+                "Done" if task.completed else "Pending",
+                task.assigned_to or "None",
+            )
+        self._console.print(table)
+
     def _handle_list_tasks(self, args: argparse.Namespace) -> None:
-        tasks = self._manager.list_tasks(args.user, args.project)
+        tasks = self._manager.list_tasks(args.user, args.project, status=args.status, assigned_to=args.assigned_to)
         if not tasks:
             self._console.print(f"[yellow]No tasks found inside project '{args.project}'.[/yellow]")
             return
         table = Table(title=f"Tasks in {args.project} ({args.user})")
         table.add_column("Task Title", style="blue")
         table.add_column("Status", style="bold")
+        table.add_column("Assigned", style="cyan")
         table.add_column("Contributors", style="yellow")
         for task in tasks:
             status = "[green]Done[/green]" if task.completed else "[yellow]Pending[/yellow]"
+            assigned_to = task.assigned_to or "None"
             contributors = ", ".join(task.contributors) if task.contributors else "None"
-            table.add_row(task.title, status, contributors)
+            table.add_row(task.title, status, assigned_to, contributors)
         self._console.print(table)
 
     def _handle_complete_task(self, args: argparse.Namespace) -> None:
@@ -335,6 +667,44 @@ class CLI:
         task.remove_contributor(args.contributor)
         self._manager._save_data()
         self._console.print(f"Removed contributor '{args.contributor}' from task '{args.task}'.")
+
+    def _handle_export_data(self, args: argparse.Namespace) -> None:
+        output_path = Path(args.output)
+        self._manager.export_data(output_path)
+        self._console.print(f"Data exported to '{output_path}'.")
+
+    def _handle_import_data(self, args: argparse.Namespace) -> None:
+        input_path = Path(args.input)
+        self._manager.import_data(input_path)
+        self._console.print(f"Data imported from '{input_path}'.")
+
+    def _handle_update_user(self, args: argparse.Namespace) -> None:
+        user = self._manager.rename_user(args.name, args.new_name)
+        self._console.print(f"User '{args.name}' renamed to '{user.name}'.")
+
+    def _handle_project_summary(self, args: argparse.Namespace) -> None:
+        summary = self._manager.project_summary(args.user, args.title)
+        table = Table(title=f"Project Summary: {summary['project']}")
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="white")
+        table.add_row("User", summary["user"])
+        table.add_row("Description", summary["description"] or "None")
+        table.add_row("Status", summary["status"].title())
+        table.add_row("Tasks", str(summary["tasks"]))
+        table.add_row("Completed Tasks", str(summary["completed_tasks"]))
+        table.add_row("Pending Tasks", str(summary["pending_tasks"]))
+        table.add_row("Contributors", ", ".join(summary["contributors"]) if summary["contributors"] else "None")
+        self._console.print(table)
+
+    def _handle_user_summary(self, args: argparse.Namespace) -> None:
+        summary = self._manager.user_summary(args.user)
+        table = Table(title=f"Summary for {summary['user']}")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="white")
+        table.add_row("Projects", str(summary["projects"]))
+        table.add_row("Tasks", str(summary["tasks"]))
+        table.add_row("Completed Tasks", str(summary["completed_tasks"]))
+        self._console.print(table)
 
 
 def main() -> int:
