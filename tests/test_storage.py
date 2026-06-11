@@ -59,7 +59,7 @@ def test_3_nested_reconstruction(tmp_path: Path):
     assert isinstance(loaded_task, Task)
     
     assert loaded_task.title == "Build CLI"
-    assert "Emmanuel" in loaded_task.contributors
+    assert any(contributor.name == "Emmanuel" for contributor in loaded_task.contributors)
 
 
 def test_4_corrupt_json_raises_custom_exception(tmp_path: Path):
