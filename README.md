@@ -32,7 +32,7 @@ A lightweight, extensible Python CLI application for managing users, projects, t
 1. **Clone repository**
 
 ```
-git clone https://github.com/yourusername/project-management-cli.git
+git clone https://github.com/favourkendi-dev/project-management-cli.git
 cd project-management-cli
 ```
 
@@ -56,7 +56,7 @@ The entrypoint is `main.py`. Enable debug logging with the global `--debug` flag
 
 ```
 # Add a user
-python3 main.py add-user --name "Alex" --email "alex@example.com"
+python3 main.py add-user --name "Alex" --email "alex123@gmail.com"
 
 # List all users
 python3 main.py list-users
