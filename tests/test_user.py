@@ -1,5 +1,6 @@
 import pytest
 from project_manager.models.user import (
+    Person,
     User,
     EmptyUserNameError,
     DuplicateProjectError,
@@ -43,3 +44,10 @@ def test_user_project_management():
     user.remove_project("dev project")
     with pytest.raises(ProjectNotFoundError):
         user.get_project("Dev Project")
+
+
+def test_user_has_id_and_repr():
+    user = User(name="Developer", email="dev@example.com")
+    assert isinstance(user.id, int)
+    assert "Developer" in repr(user)
+    assert isinstance(user, Person)
