@@ -160,3 +160,7 @@ class Storage:
             raise InvalidDatabaseStructureError(
                 f"'users' must be a list, got {type(data['users']).__name__}."
             )
+
+    def validate_database_structure(self, data: Any) -> None:
+        """Public validation for external callers and import operations."""
+        self._validate_database_structure(data)
