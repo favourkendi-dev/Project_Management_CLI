@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -46,6 +47,8 @@ class CLI:
             parser.print_help()
             return 1
 
+        if getattr(parsed_args, "debug", False):
+            logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
         try:
             parsed_args.func(parsed_args)
             return 0
@@ -72,6 +75,11 @@ class CLI:
         parser = argparse.ArgumentParser(
             prog="project_manager",
             description="Command Line Project Management System",
+        )
+        parser.add_argument(
+            "--debug",
+            action="store_true",
+            help="Enable debug logging for CLI operations",
         )
 
         subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -608,7 +616,7 @@ class CLI:
         table.add_row("Priority", task.priority.title())
         table.add_row("Assigned To", task.assigned_to or "None")
         table.add_row("Status", "Done" if task.completed else "Pending")
-        table.add_row("Contributors", ", ".join(task.contributors) if task.contributors else "None")
+        table.add_row("Contributors", ", ".join(task.contributor_names) if task.contributor_names else "None")
         self._console.print(table)
 
     def _handle_search_tasks(self, args: argparse.Namespace) -> None:
@@ -643,7 +651,7 @@ class CLI:
         for task in tasks:
             status = "[green]Done[/green]" if task.completed else "[yellow]Pending[/yellow]"
             assigned_to = task.assigned_to or "None"
-            contributors = ", ".join(task.contributors) if task.contributors else "None"
+            contributors = ", ".join(task.contributor_names) if task.contributor_names else "None"
             table.add_row(task.title, status, assigned_to, contributors)
         self._console.print(table)
 
@@ -652,9 +660,7 @@ class CLI:
         self._console.print(f"Task '{args.task}' marked as completed.")
 
     def _handle_remove_task(self, args: argparse.Namespace) -> None:
-        project = self._manager.get_project(args.user, args.project)
-        project.remove_task(args.task)
-        self._manager._save_data()
+        self._manager.remove_task(args.user, args.project, args.task)
         self._console.print(f"Task '{args.task}' removed from project '{args.project}'.")
 
     def _handle_add_contributor(self, args: argparse.Namespace) -> None:
@@ -662,10 +668,7 @@ class CLI:
         self._console.print(f"Added contributor '{args.contributor}' to task '{args.task}'.")
 
     def _handle_remove_contributor(self, args: argparse.Namespace) -> None:
-        project = self._manager.get_project(args.user, args.project)
-        task = project.get_task(args.task)
-        task.remove_contributor(args.contributor)
-        self._manager._save_data()
+        self._manager.remove_contributor(args.user, args.project, args.task, args.contributor)
         self._console.print(f"Removed contributor '{args.contributor}' from task '{args.task}'.")
 
     def _handle_export_data(self, args: argparse.Namespace) -> None:
