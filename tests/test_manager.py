@@ -130,7 +130,7 @@ def test_add_contributor(manager: Manager):
     manager.add_task_contributor("Emmanuel", "CLI Tool", "Write Tests", "Annette")
     tasks = manager.list_tasks("Emmanuel", "CLI Tool")
     target_task = next(t for t in tasks if t.title == "Write Tests")
-    assert "Annette" in target_task.contributors
+    assert any(contributor.name == "Annette" for contributor in target_task.contributors)
 
 
 def test_remove_contributor(manager: Manager):
@@ -142,7 +142,7 @@ def test_remove_contributor(manager: Manager):
     
     task = project.get_task("Write Tests")
     task.remove_contributor("Annette")
-    assert "Annette" not in task.contributors
+    assert all(contributor.name != "Annette" for contributor in task.contributors)
 
 
 def test_persistence_roundtrip(db_setup):
@@ -163,4 +163,4 @@ def test_persistence_roundtrip(db_setup):
     recovered_task = recovered_project.get_task("Write Tests")
     
     assert recovered_task.title == "Write Tests"
-    assert "Annette" in recovered_task.contributors
+    assert any(contributor.name == "Annette" for contributor in recovered_task.contributors)
