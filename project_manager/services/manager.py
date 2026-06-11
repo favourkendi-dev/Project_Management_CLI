@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from project_manager.models.project import (
@@ -26,6 +27,8 @@ from project_manager.services.storage import (
     InvalidInputError,
     Storage,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 class DuplicateUserError(ValueError):
@@ -360,7 +363,7 @@ class Manager:
         project = self.get_project(user_name, project_title)
         tasks = project.list_tasks()
         completed_tasks = sum(1 for task in tasks if task.completed)
-        contributors = sorted({contributor for task in tasks for contributor in task.contributors})
+        contributors = sorted({contributor.name for task in tasks for contributor in task.contributors})
         return {
             "user": user_name,
             "project": project.title,
@@ -391,7 +394,7 @@ class Manager:
         with input_path.open("r", encoding="utf-8") as file:
             data = json.load(file)
 
-        self._storage._validate_database_structure(data)
+        self._storage.validate_database_structure(data)
         users: list[User] = []
         for user_data in data["users"]:
             if not isinstance(user_data, dict):
@@ -405,158 +408,22 @@ class Manager:
 
     def _load_data(self) -> None:
         """Load all users from persistent storage."""
+        _logger.debug("Loading users from storage.")
         try:
             self._users = self._storage.load_users()
+            _logger.debug("Loaded %d users.", len(self._users))
         except (
             DatabaseCorruptionError,
             InvalidDatabaseStructureError,
             InvalidInputError,
         ):
             self._users = []
+            _logger.exception("Failed to load users from storage.")
             raise
 
     def _save_data(self) -> None:
         """Persist all users to storage."""
-        self._storage.save_users(self._users)
-
-    def _find_user_index(self, name: str) -> int | None:
-        """Mark a task as completed.
-
-        Args:
-            user_name: The name of the user who owns the project.
-            project_title: The title of the project.
-            task_title: The title of the task to complete.
-
-        Raises:
-            TypeError: If inputs are not strings.
-            EmptyUserNameError: If user_name is empty or whitespace-only.
-            EmptyProjectTitleError: If project_title is empty or whitespace-only.
-            EmptyTitleError: If task_title is empty or whitespace-only.
-            UserNotFoundError: If the user does not exist.
-            ProjectNotFoundError: If the project does not exist for the user.
-            TaskNotFoundError: If the task does not exist in the project.
-            TaskAlreadyCompletedError: If the task is already completed.
-        """
-        task = self._get_task(user_name, project_title, task_title)
-        if task.completed:
-            raise TaskAlreadyCompletedError(
-                f"Task '{task.title}' is already completed."
-            )
-        task.mark_complete()
-        self._save_data()
-
-    def remove_task(self, user_name: str, project_title: str, task_title: str) -> None:
-        """Remove a task from a project.
-
-        Args:
-            user_name: The name of the user who owns the project.
-            project_title: The title of the project.
-            task_title: The title of the task to remove.
-
-        Raises:
-            TypeError: If inputs are not strings.
-            EmptyUserNameError: If user_name is empty or whitespace-only.
-            EmptyProjectTitleError: If project_title is empty or whitespace-only.
-            EmptyTitleError: If task_title is empty or whitespace-only.
-            UserNotFoundError: If the user does not exist.
-            ProjectNotFoundError: If the project does not exist for the user.
-            TaskNotFoundError: If the task does not exist in the project.
-        """
-        project = self.get_project(user_name, project_title)
-        project.remove_task(task_title)
-        self._save_data()
-
-    def add_contributor(
-        self,
-        user_name: str,
-        project_title: str,
-        task_title: str,
-        contributor_name: str,
-    ) -> None:
-        """Add a contributor to a task.
-
-        Args:
-            user_name: The name of the user who owns the project.
-            project_title: The title of the project.
-            task_title: The title of the task.
-            contributor_name: The name of the contributor to add.
-
-        Raises:
-            TypeError: If inputs are not strings.
-            EmptyUserNameError: If user_name is empty or whitespace-only.
-            EmptyProjectTitleError: If project_title is empty or whitespace-only.
-            EmptyTitleError: If task_title is empty or whitespace-only.
-            EmptyContributorError: If contributor_name is empty or whitespace-only.
-            UserNotFoundError: If the user does not exist.
-            ProjectNotFoundError: If the project does not exist for the user.
-            TaskNotFoundError: If the task does not exist in the project.
-        """
-        task = self._get_task(user_name, project_title, task_title)
-        normalized_contributor = self._normalize_name(contributor_name)
-        task.add_contributor(normalized_contributor)
-        self._save_data()
-
-    def add_task_contributor(
-        self,
-        user_name: str,
-        project_title: str,
-        task_title: str,
-        contributor_name: str,
-    ) -> None:
-        """Add a contributor to an existing project task."""
-        task = self._get_task(user_name, project_title, task_title)
-        normalized_contributor = self._normalize_name(contributor_name)
-        task.add_contributor(normalized_contributor)
-        self._save_data()
-
-    def remove_contributor(
-        self,
-        user_name: str,
-        project_title: str,
-        task_title: str,
-        contributor_name: str,
-    ) -> None:
-        """Remove a contributor from a task.
-
-        Args:
-            user_name: The name of the user who owns the project.
-            project_title: The title of the project.
-            task_title: The title of the task.
-            contributor_name: The name of the contributor to remove.
-
-        Raises:
-            TypeError: If inputs are not strings.
-            EmptyUserNameError: If user_name is empty or whitespace-only.
-            EmptyProjectTitleError: If project_title is empty or whitespace-only.
-            EmptyTitleError: If task_title is empty or whitespace-only.
-            EmptyContributorError: If contributor_name is empty or whitespace-only.
-            UserNotFoundError: If the user does not exist.
-            ProjectNotFoundError: If the project does not exist for the user.
-            TaskNotFoundError: If the task does not exist in the project.
-            ContributorNotFoundError: If the contributor is not found on the task.
-        """
-        task = self._get_task(user_name, project_title, task_title)
-        normalized_contributor = self._normalize_name(contributor_name)
-        try:
-            task.remove_contributor(normalized_contributor)
-        except ValueError as exc:
-            raise ContributorNotFoundError(str(exc)) from exc
-        self._save_data()
-
-    def _load_data(self) -> None:
-        """Load all users from persistent storage."""
-        try:
-            self._users = self._storage.load_users()
-        except (
-            DatabaseCorruptionError,
-            InvalidDatabaseStructureError,
-            InvalidInputError,
-        ):
-            self._users = []
-            raise
-
-    def _save_data(self) -> None:
-        """Persist all users to storage."""
+        _logger.debug("Saving %d users to storage.", len(self._users))
         self._storage.save_users(self._users)
 
     def _find_user_index(self, name: str) -> int | None:
@@ -616,6 +483,109 @@ class Manager:
         if not stripped:
             raise EmptyUserNameError("Name cannot be empty or contain only whitespace.")
         return stripped
+
+
+    def remove_task(self, user_name: str, project_title: str, task_title: str) -> None:
+        """Remove a task from a project."""
+        project = self.get_project(user_name, project_title)
+        project.remove_task(task_title)
+        self._save_data()
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        """Normalize a title by stripping whitespace and validating."""
+        if not isinstance(title, str):
+            raise TypeError(f"title must be a string, got {type(title).__name__}")
+        stripped = title.strip()
+        if not stripped:
+            raise EmptyTitleError("Title cannot be empty or contain only whitespace.")
+        return stripped
+
+    def _get_or_create_user(self, name: str) -> User:
+        """Return an existing User instance or create a new one."""
+        normalized_name = self._normalize_name(name)
+        try:
+            return self.get_user(normalized_name)
+        except UserNotFoundError:
+            return User(name=normalized_name)
+
+    def add_contributor(
+        self,
+        user_name: str,
+        project_title: str,
+        task_title: str,
+        contributor_name: str,
+    ) -> None:
+        """Add a contributor to a task.
+
+        Args:
+            user_name: The name of the user who owns the project.
+            project_title: The title of the project.
+            task_title: The title of the task.
+            contributor_name: The name of the contributor to add.
+
+        Raises:
+            TypeError: If inputs are not strings.
+            EmptyUserNameError: If user_name is empty or whitespace-only.
+            EmptyProjectTitleError: If project_title is empty or whitespace-only.
+            EmptyTitleError: If task_title is empty or whitespace-only.
+            EmptyContributorError: If contributor_name is empty or whitespace-only.
+            UserNotFoundError: If the user does not exist.
+            ProjectNotFoundError: If the project does not exist for the user.
+            TaskNotFoundError: If the task does not exist in the project.
+        """
+        task = self._get_task(user_name, project_title, task_title)
+        contributor_user = self._get_or_create_user(contributor_name)
+        task.add_contributor(contributor_user)
+        self._save_data()
+
+    def add_task_contributor(
+        self,
+        user_name: str,
+        project_title: str,
+        task_title: str,
+        contributor_name: str,
+    ) -> None:
+        """Add a contributor to an existing project task."""
+        task = self._get_task(user_name, project_title, task_title)
+        contributor_user = self._get_or_create_user(contributor_name)
+        task.add_contributor(contributor_user)
+        self._save_data()
+
+    def remove_contributor(
+        self,
+        user_name: str,
+        project_title: str,
+        task_title: str,
+        contributor_name: str,
+    ) -> None:
+        """Remove a contributor from a task.
+
+        Args:
+            user_name: The name of the user who owns the project.
+            project_title: The title of the project.
+            task_title: The title of the task.
+            contributor_name: The name of the contributor to remove.
+
+        Raises:
+            TypeError: If inputs are not strings.
+            EmptyUserNameError: If user_name is empty or whitespace-only.
+            EmptyProjectTitleError: If project_title is empty or whitespace-only.
+            EmptyTitleError: If task_title is empty or whitespace-only.
+            EmptyContributorError: If contributor_name is empty or whitespace-only.
+            UserNotFoundError: If the user does not exist.
+            ProjectNotFoundError: If the project does not exist for the user.
+            TaskNotFoundError: If the task does not exist in the project.
+            ContributorNotFoundError: If the contributor is not found on the task.
+        """
+        task = self._get_task(user_name, project_title, task_title)
+        normalized_contributor = self._normalize_name(contributor_name)
+        try:
+            task.remove_contributor(normalized_contributor)
+        except ValueError as exc:
+            raise ContributorNotFoundError(str(exc)) from exc
+        self._save_data()
+
 
     @staticmethod
     def _normalize_title(title: str) -> str:
