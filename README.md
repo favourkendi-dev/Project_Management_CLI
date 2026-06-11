@@ -1,13 +1,13 @@
 # Project Management CLI Tool
 
-A lightweight, extensible Python command-line application for creating and managing
-users, projects, tasks, and contributors. It provides a fast, terminal-first
-workflow for tracking work locally with JSON-backed persistence, and is useful
-for developers, small teams, and experimenters who want a simple CLI project
+A lightweight extensible Python command-line application for creating and managing
+users, projects, tasks and contributors. It provides a fast terminal-first
+workflow for tracking work locally with JSON-backed persistence and is useful
+for developers small teams and experimenters who want a simple CLI project
 management tool without the overhead of an external service.
 
 Core capabilities include creating users and projects adding tasks with
-priorities and due dates, assigning contributors to tasks, and exporting/importing
+priorities and due dates assigning contributors to tasks and exporting/importing
 project data for backup or sharing.
 
 ## Features
@@ -54,7 +54,7 @@ python3 main.py --debug add-user --name "Alex" --email "alex@example.com"
 
 Add a user:
 ```bash
-python3 main.py add-user --name "Alex" --email "alex@example.com"
+python3 main.py add-user --name "Alex" --email "alex123@gmail.com"
 ```
 
 Create a project for a user:
