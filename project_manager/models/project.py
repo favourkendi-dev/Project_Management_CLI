@@ -26,6 +26,7 @@ class Project:
     """Represents a project that owns a collection of tasks and metadata."""
 
     VALID_STATUSES = {"planned", "active", "completed"}
+    _id_counter = 1
 
     def __init__(
         self,
@@ -34,6 +35,7 @@ class Project:
         status: str | None = None,
         due_date: str | None = None,
         tasks: list[Task] | None = None,
+        id: int | None = None,
     ) -> None:
         if not isinstance(title, str):
             raise TypeError(f"title must be a string, got {type(title).__name__}")
@@ -41,6 +43,7 @@ class Project:
         if not stripped_title:
             raise EmptyProjectTitleError("Project title cannot be empty or contain only whitespace.")
 
+        self._id: int = id if id is not None else self._generate_id()
         self._title: str = stripped_title
         self._description: str = self._validate_optional_string(description)
         self._status: str = self._validate_status(status)
@@ -52,6 +55,22 @@ class Project:
                 raise TypeError(f"tasks must be a list of Task instances, got {type(tasks).__name__}")
             for task in tasks:
                 self.add_task(task)
+
+    @classmethod
+    def _generate_id(cls) -> int:
+        id_ = cls._id_counter
+        cls._id_counter += 1
+        return id_
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    def __repr__(self) -> str:
+        return f"<Project id={self._id} title={self._title!r} status={self._status!r}>"
+
+    def __str__(self) -> str:
+        return f"{self._title} [{self._status}]"
 
     @property
     def title(self) -> str:
@@ -160,6 +179,7 @@ class Project:
     def to_dict(self) -> dict[str, Any]:
         """Serialize the project to a JSON-serializable dictionary."""
         return {
+            "id": self._id,
             "title": self._title,
             "description": self._description,
             "status": self._status,
@@ -180,6 +200,7 @@ class Project:
         description = data.get("description")
         status = data.get("status")
         due_date = data.get("due_date")
+        project_id = data.get("id")
         tasks_data = data.get("tasks", [])
         if not isinstance(tasks_data, list):
             raise TypeError(f"'tasks' must be a list, got {type(tasks_data).__name__}")
@@ -190,7 +211,7 @@ class Project:
                 raise TypeError(f"Each task must be a dict, got {type(task_data).__name__}")
             tasks.append(Task.from_dict(task_data))
 
-        return cls(title=title, description=description, status=status, due_date=due_date, tasks=tasks)
+        return cls(title=title, description=description, status=status, due_date=due_date, tasks=tasks, id=project_id)
 
     def set_due_date(self, due_date: str | None) -> None:
         self._due_date = self._parse_due_date(due_date)
