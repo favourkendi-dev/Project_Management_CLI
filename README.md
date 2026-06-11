@@ -1,7 +1,14 @@
 # Project Management CLI Tool
 
+A lightweight, extensible Python command-line application for creating and managing
+users, projects, tasks, and contributors. It provides a fast, terminal-first
+workflow for tracking work locally with JSON-backed persistence, and is useful
+for developers, small teams, and experimenters who want a simple CLI project
+management tool without the overhead of an external service.
 
-A Python-based command-line application for managing users projects tasks and contributors.
+Core capabilities include creating users and projects adding tasks with
+priorities and due dates, assigning contributors to tasks, and exporting/importing
+project data for backup or sharing.
 
 ## Features
 
