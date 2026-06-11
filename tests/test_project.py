@@ -39,3 +39,9 @@ def test_project_task_operations():
     
     with pytest.raises(TaskNotFoundError):
         project.get_task("Unique Task")
+
+
+def test_project_has_id_and_repr():
+    project = Project(title="Alpha")
+    assert isinstance(project.id, int)
+    assert "Alpha" in repr(project)
