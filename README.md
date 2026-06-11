@@ -1,8 +1,7 @@
 # Project Management CLI Tool
 
 
-
-A Python-based command-line application for managing users, projects, tasks, and contributors.
+A Python-based command-line application for managing users projects tasks and contributors.
 
 ## Features
 
@@ -37,6 +36,11 @@ The entrypoint is `main.py`.
 Print the help menu:
 ```bash
 python3 main.py --help
+```
+
+Enable debug logging for command execution:
+```bash
+python3 main.py --debug add-user --name "Alex" --email "alex@example.com"
 ```
 
 ### Examples
@@ -88,6 +92,11 @@ Run tests with pytest:
 pytest
 ```
 
+If imports fail while running tests from the repository root, use:
+```bash
+PYTHONPATH=. pytest -q
+```
+
 ## Project structure
 
 - `main.py` - application entry point
@@ -102,3 +111,5 @@ pytest
 - The application stores data in `data/projects.json`.
 - If `data/projects.json` does not exist, it is created automatically.
 - The CLI uses `rich` for colored and tabular output.
+- Tests may require `PYTHONPATH=.` when running directly from the repository root.
+- A debug mode is available through the global `--debug` flag.
